@@ -5,15 +5,28 @@ import {
   formatJSONResponse,
   ValidatedEventAPIGatewayProxyEvent,
 } from "@libs/apiGateway";
+import { Client } from "pg";
 import { middyfy } from "@libs/lambda";
-import { getProducts } from "src/utils/getProducts";
+import { dbOptions } from "src/utils/dbOptions";
 
 const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
   async (event) => {
+    console.log(`event`, event);
+
+    const pgClient = new Client(dbOptions);
+
     try {
-      const products = await getProducts();
       const { productId } = event.pathParameters;
-      const product = products.filter((p) => p.id === Number(productId))[0];
+      await pgClient.connect();
+      const query = {
+        text: `SELECT p.*, s.count
+                FROM products p
+              INNER JOIN stocks s ON p.id = s.product_id
+              WHERE p.id = $1;`,
+        values: [productId],
+      };
+      const result = await pgClient.query(query);
+      const product = result.rows[0];
       if (!product) {
         return formatJSONResponse(
           {
@@ -43,6 +56,8 @@ const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
         },
         500
       );
+    } finally {
+      pgClient.end();
     }
   };
 
