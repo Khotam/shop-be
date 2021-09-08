@@ -5,12 +5,22 @@ import { formatJSONResponse } from "@libs/apiGateway";
 import { middyfy } from "@libs/lambda";
 
 import schema from "./schema";
-import { getProducts } from "src/utils/getProducts";
+import { Client } from "pg";
+import { dbOptions } from "src/utils/dbOptions";
 
 const getProductsList: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
-  async (_) => {
+  async (event) => {
+    console.log(`event`, event);
+
+    const pgClient = new Client(dbOptions);
     try {
-      const products = await getProducts();
+      await pgClient.connect();
+
+      const result = await pgClient.query(`
+        SELECT p.*, s.count
+          FROM products p
+        INNER JOIN stocks s ON p.id = s.product_id;`);
+      const products = result.rows;
       return formatJSONResponse(
         {
           success: true,
@@ -29,6 +39,8 @@ const getProductsList: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
         },
         500
       );
+    } finally {
+      pgClient.end();
     }
   };
 
