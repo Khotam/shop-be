@@ -12,18 +12,20 @@ export type ValidatedEventAPIGatewayProxyEvent<S> = Handler<
   ValidatedAPIGatewayProxyEvent<S>,
   APIGatewayProxyResult
 >;
+const HEADERS = {
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "*",
+  "Access-Control-Allow-Credentials": true,
+};
 
 export const formatJSONResponse = (
   response: Record<string, unknown>,
-  statusCode: number
+  statusCode: number = 200
 ) => {
   return {
     statusCode,
-    headers: {
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "*",
-    },
+    headers: HEADERS,
     body: JSON.stringify(response),
   };
 };

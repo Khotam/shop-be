@@ -1,52 +1,43 @@
 import createProductSchema from "@functions/postProduct/createProductSchema";
-import schema from "@functions/postProduct/createProductSchema";
 import {
   formatJSONResponse,
   ValidatedEventAPIGatewayProxyEvent,
 } from "@libs/apiGateway";
 import { middyfy } from "@libs/lambda";
-import { Client } from "pg";
-import { dbOptions } from "src/utils/dbOptions";
+import { INTERNAL_SERVER_ERROR, OK } from "src/constants/responseCodes";
+import { DbContext } from "src/db/dbConnect";
+import { ProductService } from "src/services/product.service";
+import { log } from "src/utils/logger";
 
 const postProduct: ValidatedEventAPIGatewayProxyEvent<
   typeof createProductSchema
 > = async (event) => {
-  console.log(`event`, event);
+  log(event);
 
-  const pgClient = new Client(dbOptions);
   try {
-    const { title, description, price, count } = event.body;
-    await pgClient.connect();
-    await pgClient.query("BEGIN");
+    const client = DbContext.getClient();
+    await DbContext.connect();
 
-    const productDBResponse = await pgClient.query(
-      `
-        INSERT INTO products (title, description, price)
-            VALUES ($1, $2, $3) RETURNING id;
-      `,
-      [title, description, price]
-    );
-    const productId = productDBResponse.rows[0].id;
+    const { title, description, count, price } = event.body;
 
-    await pgClient.query(
-      `
-        INSERT INTO stocks (product_id, count)
-            VALUES ($1, $2);
-        `,
-      [productId, count]
-    );
-    await pgClient.query("COMMIT");
+    const productService = new ProductService();
+    const newProductId = await productService.addProduct(client, {
+      title,
+      count,
+      price,
+      description,
+    });
     console.log(`COMMIT`);
+
     return formatJSONResponse(
       {
         success: true,
-        productId: productId,
+        productId: newProductId,
         error: null,
       },
-      500
+      OK
     );
   } catch (error) {
-    await pgClient.query("ROLLBACK");
     console.log(`ROLLBACK`);
     console.error("Internal server error: ", error);
     return formatJSONResponse(
@@ -55,10 +46,10 @@ const postProduct: ValidatedEventAPIGatewayProxyEvent<
         product: null,
         error: error.message,
       },
-      500
+      INTERNAL_SERVER_ERROR
     );
   } finally {
-    pgClient.end();
+    await DbContext.end();
   }
 };
 
