@@ -1,5 +1,6 @@
 import {
   CopyObjectCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -14,6 +15,7 @@ const importFileParser = async (event) => {
 
   for (const record of event.Records) {
     const { key } = record.s3.object;
+    console.log(`key`, key);
     const s3Params = {
       Bucket: S3_BUCKET,
       Key: key,
@@ -39,7 +41,8 @@ const importFileParser = async (event) => {
         console.log(
           `Copied into ${S3_BUCKET}/${key.replace("uploaded", "parsed")}`
         );
-
+        await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+        console.log(`Deleted from ${S3_BUCKET}/${key}`);
         console.log(`Stream ended`);
       });
   }
