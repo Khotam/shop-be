@@ -4,10 +4,8 @@ import {
   GetObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { formatJSONResponse } from "@libs/apiGateway";
 import { middyfy } from "@libs/lambda";
 import * as csvParser from "csv-parser";
-import { INTERNAL_SERVER_ERROR } from "src/constants/responseCodes";
 
 const { S3_BUCKET } = process.env;
 const importFileParser = async (event) => {
