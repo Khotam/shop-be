@@ -1,27 +1,41 @@
-import "source-map-support/register";
-
 import schema from "@functions/getProductsList/schema";
 import {
   formatJSONResponse,
   ValidatedEventAPIGatewayProxyEvent,
 } from "@libs/apiGateway";
 import { middyfy } from "@libs/lambda";
-import { getProducts } from "src/utils/getProducts";
+import "source-map-support/register";
+import {
+  INTERNAL_SERVER_ERROR,
+  NOT_FOUND,
+  OK,
+} from "src/constants/responseCodes";
+import { responseMessages } from "src/constants/responseMessages";
+import { DbContext } from "src/db/dbConnect";
+import { ProductService } from "src/services/product.service";
+import { log } from "src/utils/logger";
 
 const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
   async (event) => {
+    log(event);
+
     try {
-      const products = await getProducts();
+      const client = DbContext.getClient();
       const { productId } = event.pathParameters;
-      const product = products.filter((p) => p.id === Number(productId))[0];
+      await DbContext.connect();
+      const productService = new ProductService();
+      const product = await productService.getProductByIdAsync(
+        client,
+        productId
+      );
       if (!product) {
         return formatJSONResponse(
           {
             success: false,
             product: null,
-            error: "Not found",
+            error: responseMessages[NOT_FOUND],
           },
-          404
+          NOT_FOUND
         );
       }
 
@@ -31,7 +45,7 @@ const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
           product,
           error: null,
         },
-        200
+        OK
       );
     } catch (error) {
       console.error("Internal server error: ", error);
@@ -41,8 +55,10 @@ const getProductsById: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
           product: null,
           error: error.message,
         },
-        500
+        INTERNAL_SERVER_ERROR
       );
+    } finally {
+      await DbContext.end();
     }
   };
 

@@ -1,23 +1,30 @@
-import "source-map-support/register";
-
 import type { ValidatedEventAPIGatewayProxyEvent } from "@libs/apiGateway";
 import { formatJSONResponse } from "@libs/apiGateway";
 import { middyfy } from "@libs/lambda";
-
+import "source-map-support/register";
+import { INTERNAL_SERVER_ERROR, OK } from "src/constants/responseCodes";
+import { DbContext } from "src/db/dbConnect";
+import { ProductService } from "src/services/product.service";
+import { log } from "src/utils/logger";
 import schema from "./schema";
-import { getProducts } from "src/utils/getProducts";
 
 const getProductsList: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
-  async (_) => {
+  async (event) => {
+    log(event);
+
     try {
-      const products = await getProducts();
+      const client = DbContext.getClient();
+      await DbContext.connect();
+
+      const productService = new ProductService();
+      const products = await productService.getProductsAsync(client);
       return formatJSONResponse(
         {
           success: true,
           products,
           error: null,
         },
-        200
+        OK
       );
     } catch (error) {
       console.error("Internal server error: ", error);
@@ -27,8 +34,10 @@ const getProductsList: ValidatedEventAPIGatewayProxyEvent<typeof schema> =
           product: null,
           error: error.message,
         },
-        500
+        INTERNAL_SERVER_ERROR
       );
+    } finally {
+      await DbContext.end();
     }
   };
 
