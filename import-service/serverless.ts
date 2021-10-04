@@ -25,6 +25,9 @@ const serverlessConfiguration: AWS = {
     environment: {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
       S3_BUCKET: "${env:S3_BUCKET}",
+      SQS_URL: {
+        Ref: "SQSQueue",
+      },
     },
     lambdaHashingVersion: "20201221",
     iamRoleStatements: [
@@ -38,12 +41,41 @@ const serverlessConfiguration: AWS = {
         Action: "s3:*",
         Resource: "arn:aws:s3:::nodeaws-task5-bucket/*",
       },
+      {
+        Effect: "Allow",
+        Action: "sqs:*",
+        Resource: {
+          "Fn::GetAtt": ["SQSQueue", "Arn"],
+        },
+      },
     ],
   },
   // import the function via paths
   functions: {
     importProductsFile,
     importFileParser: importFileParser as any,
+  },
+  resources: {
+    Resources: {
+      SQSQueue: {
+        Type: "AWS::SQS::Queue",
+        Properties: {
+          QueueName: "catalogItemsQueue",
+        },
+      },
+    },
+    Outputs: {
+      SQSQueueArn: {
+        Description:
+          "sqs queue for inserting parsed csv file products into RDS",
+        Value: {
+          "Fn::GetAtt": ["SQSQueue", "Arn"],
+        },
+        Export: {
+          Name: "sqs-queue-task6-arn",
+        },
+      },
+    },
   },
 };
 
