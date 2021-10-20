@@ -15,6 +15,13 @@ export default {
             },
           },
         },
+        authorizer: {
+          name: "basicAuthorizer",
+          arn: "${self:custom.authorizerArn}",
+          type: "token",
+          identitySource: "method.request.header.Authorization",
+          resultTtlInSeconds: 0,
+        },
       },
     },
   ],
