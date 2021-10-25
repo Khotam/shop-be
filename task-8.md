@@ -1,1 +1,1 @@
-Please check my work near to the cross-check deadline. I will complete it in near deadline. Thank you :)
+Please check my work near the cross-check deadline. I will complete it in near deadline. Thank you :)
